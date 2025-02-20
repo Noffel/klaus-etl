@@ -1,0 +1,5 @@
+apache-airflow-providers-google
+google-cloud-bigquery
+pandas
+pyarrow
+flatten-json

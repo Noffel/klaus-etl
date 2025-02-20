@@ -1,0 +1,10 @@
+logs/
+plugins/
+.env
+.env.prod
+config/
+airflow.db
+*.bash
+*.pyc
+__pycache__/
+gcp-key.json
