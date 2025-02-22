@@ -1,29 +1,34 @@
 from datetime import datetime
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from metadata import get_last_processed, update_metadata
 
 def extract_json(**context):
-    """Task 1: Raw data extraction from the JSON file"""
+    last_ts = context['ti'].xcom_pull(task_ids='get_metadata')
     from extract_json import extract_json
-    raw_data = extract_json('/opt/airflow/data/etl.json')
-    return raw_data  # XCom auto-serializes small data
+    return extract_json('/opt/airflow/data/etl.json', last_ts)
 
 def transform_data(**context):
-    """Task 2: Data transformation"""
     ti = context['ti']
     raw_data = ti.xcom_pull(task_ids='extract_task')
-    
     from transform_json import process_json
-    dfs = process_json(raw_data)
-    return dfs
+    return process_json(raw_data)
 
 def load_data(**context):
-    """Task 3: Data loading to BigQuery tables"""
     ti = context['ti']
     dfs = ti.xcom_pull(task_ids='transform_task')
-    
     from load_json import load_to_bq
     load_to_bq(dfs, "klaus_subscriptions")
+
+def get_metadata(**context):
+    last_ts = get_last_processed('subscriptions')
+    context['ti'].xcom_push(key='last_ts', value=last_ts)
+
+def update_metadata_task(**context):
+    ti = context['ti']
+    dfs = ti.xcom_pull(task_ids='transform_task')
+    max_ts = dfs['subscriptions']['updated_at'].max()
+    update_metadata('subscriptions', max_ts)
 
 with DAG(
     'klaus_bq_etl',
@@ -31,6 +36,12 @@ with DAG(
     start_date=datetime(2025, 1, 1),
     catchup=False
 ) as dag:
+
+    get_meta = PythonOperator(
+        task_id='get_metadata',
+        python_callable=get_metadata,
+        provide_context=True
+    )
 
     extract = PythonOperator(
         task_id='extract_task',
@@ -50,4 +61,10 @@ with DAG(
         provide_context=True
     )
 
-    extract >> transform >> load
+    update_meta = PythonOperator(
+        task_id='update_metadata',
+        python_callable=update_metadata_task,
+        provide_context=True
+    )
+
+    get_meta >> extract >> transform >> load >> update_meta
