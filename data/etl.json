@@ -207,7 +207,7 @@
     "billing_period_unit": "month",
     "auto_collection": "off",
     "customer_id": "Azyu3DTuRM1uq1EAg",
-    "status": "active",
+    "status": "inactive",
     "current_term_start": 1698915678,
     "current_term_end": 1701507678,
     "next_billing_at": 1701507678,

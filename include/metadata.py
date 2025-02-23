@@ -18,12 +18,17 @@ def get_last_processed(table_name):
         print(f"Metadata read error: {str(e)}")
         return None
 
-def update_metadata(table_name, max_ts):
+def update_metadata(table_name, max_ts, row_count):
     try:
         query = f"""
             INSERT INTO {METADATA_CONFIG['dataset_id']}.{METADATA_CONFIG['metadata_table']}
-            (table_name, last_processed_ts, processed_at)
-            VALUES('{table_name}', TIMESTAMP('{max_ts.isoformat()}'), CURRENT_TIMESTAMP())
+            (table_name, last_processed_ts, processed_at, row_count)
+            VALUES (
+                '{table_name}', 
+                TIMESTAMP('{max_ts.isoformat()}'), 
+                CURRENT_TIMESTAMP(),
+                {row_count}
+            )
         """
         client.query(query).result()
     except Exception as e:

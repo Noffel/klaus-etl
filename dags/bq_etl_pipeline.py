@@ -27,8 +27,9 @@ def get_metadata(**context):
 def update_metadata_task(**context):
     ti = context['ti']
     dfs = ti.xcom_pull(task_ids='transform_task')
+    row_count = len(dfs['subscriptions']) if 'subscriptions' in dfs else 0
     max_ts = dfs['subscriptions']['updated_at'].max()
-    update_metadata('subscriptions', max_ts)
+    update_metadata('subscriptions', max_ts, row_count) 
 
 with DAG(
     'klaus_bq_etl',
