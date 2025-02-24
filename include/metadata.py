@@ -2,6 +2,9 @@ from google.cloud import bigquery
 from connect_gc import client
 from etl_config import METADATA_CONFIG
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 def get_last_processed(table_name):
     try:
@@ -13,9 +16,14 @@ def get_last_processed(table_name):
             LIMIT 1
         """
         result = client.query(query).result()
-        return next(result).last_processed_ts if result.total_rows > 0 else None
+        if result.total_rows > 0:
+            ts = next(result).last_processed_ts
+            logger.info(f"Last processed timestamp for {table_name}: {ts}")
+            return ts
+        logger.info(f"No previous timestamp found for {table_name}")
+        return None
     except Exception as e:
-        print(f"Metadata read error: {str(e)}")
+        logger.error(f"Metadata read error for {table_name}: {str(e)}")
         return None
 
 def update_metadata(table_name, max_ts, row_count):
@@ -31,6 +39,7 @@ def update_metadata(table_name, max_ts, row_count):
             )
         """
         client.query(query).result()
+        logger.info(f"Updated metadata for {table_name} with {row_count} rows (max_ts={max_ts})")
     except Exception as e:
-        print(f"Metadata update error: {str(e)}")
+        logger.error(f"Metadata update failed for {table_name}: {str(e)}")
         raise

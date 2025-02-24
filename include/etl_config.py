@@ -27,37 +27,6 @@ BQ_SCHEMA = {
         'object': 'STRING',
         'coupon': 'STRING',
         'currency_code': 'STRING',
-        'subscription_items_0_item_price_id': 'STRING',
-        'subscription_items_0_item_type': 'STRING',
-        'subscription_items_0_quantity': 'FLOAT64',
-        'subscription_items_0_unit_price': 'FLOAT64',
-        'subscription_items_0_amount': 'FLOAT64',
-        'subscription_items_0_free_quantity': 'FLOAT64',
-        'subscription_items_0_object': 'STRING',
-        'subscription_items_1_item_price_id': 'STRING',
-        'subscription_items_1_item_type': 'STRING',
-        'subscription_items_1_quantity': 'FLOAT64',
-        'subscription_items_1_unit_price': 'FLOAT64',
-        'subscription_items_1_amount': 'FLOAT64',
-        'subscription_items_1_object': 'STRING',
-        'subscription_items_2_item_price_id': 'STRING',
-        'subscription_items_2_item_type': 'STRING',
-        'subscription_items_2_metered_quantity': 'FLOAT64',
-        'subscription_items_2_unit_price': 'FLOAT64',
-        'subscription_items_2_object': 'STRING',
-        'item_tiers_0_item_price_id': 'STRING',
-        'item_tiers_0_starting_unit': 'FLOAT64',
-        'item_tiers_0_ending_unit': 'FLOAT64',
-        'item_tiers_0_price': 'FLOAT64',
-        'item_tiers_0_object': 'STRING',
-        'item_tiers_1_item_price_id': 'STRING',
-        'item_tiers_1_starting_unit': 'FLOAT64',
-        'item_tiers_1_price': 'FLOAT64',
-        'item_tiers_1_object': 'STRING',
-        'coupons_0_coupon_id': 'STRING',
-        'coupons_0_apply_till': 'FLOAT64',
-        'coupons_0_applied_count': 'FLOAT64',
-        'coupons_0_object': 'STRING',
         'due_invoices_count': 'INT64',
         'due_since': 'TIMESTAMP',
         'total_dues': 'FLOAT64',
@@ -69,12 +38,6 @@ BQ_SCHEMA = {
         'auto_close_invoices': 'INT64',
         'auto_collection': 'INT64',
         'offline_payment_method': 'STRING',
-        'created_at_formatted': 'STRING',
-        'created_at_date': 'DATE',
-        'started_at_formatted': 'STRING',
-        'started_at_date': 'DATE',
-        'updated_at_formatted': 'STRING',
-        'updated_at_date': 'DATE',
         'row_hash': 'INT64'
     },
     'subscription_items': {
@@ -185,8 +148,9 @@ BQ_SCHEMA = {
 }
 
 METADATA_CONFIG = {
-    'metadata_table': 'etl_metadata',
+    'project_id': 'klaus-data-model',
     'dataset_id': 'klaus_subscriptions',
+    'metadata_table': 'etl_metadata',
     'tables': {
         'subscriptions': {
             'incremental_key': 'updated_at',
@@ -203,8 +167,7 @@ METADATA_CONFIG = {
             'hash_columns': ['billing_address_line1', 'billing_address_zip']
         },
         'subscription_items': {
-            'pk': ['subscription_id', 'item_price_id'],
-            'incremental_key': 'created_at'
+            'pk': ['subscription_id', 'item_price_id']
         },
         'item_tiers': {
             'pk': ['subscription_id', 'item_price_id', 'starting_unit']

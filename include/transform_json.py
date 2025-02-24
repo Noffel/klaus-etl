@@ -11,19 +11,15 @@ def sanitize_column_name(name):
     return sanitized[:128]
 
 def convert_column(series, target_type):
-    """Convert Pandas series to match BigQuery schema with precise type handling"""
+    """Convert Pandas series with simplified timestamp handling"""
     try:
         if target_type == 'INT64':
             return pd.to_numeric(series, errors='coerce').astype('Int64')
         elif target_type == 'FLOAT64':
             return pd.to_numeric(series, errors='coerce').astype('float64')
         elif target_type == 'TIMESTAMP':
-            # To handle Unix timestamps in SECONDS
             series = pd.to_datetime(series, unit='s', errors='coerce', utc=True)
-            return series.dt.floor('us')  # Truncate to microseconds
-        elif target_type == 'DATE':
-            series = pd.to_datetime(series, unit='s', errors='coerce').dt.tz_localize(None)
-            return series.dt.date
+            return series.dt.floor('us')
         elif target_type == 'STRING':
             return series.astype(str)
         else:
@@ -33,33 +29,41 @@ def convert_column(series, target_type):
         return series
 
 def enforce_schema(df, table_name):
-    """Ensure DataFrame contains all columns from BQ_SCHEMA with proper null handling"""
+    """Ensure DataFrame contains required columns"""
     if table_name not in BQ_SCHEMA:
         return df
     
     schema_cols = list(BQ_SCHEMA[table_name].keys())
     
-    # Add missing columns with appropriate null values
     for col in schema_cols:
         if col not in df.columns:
             dtype = BQ_SCHEMA[table_name][col]
             null_value = pd.NA if dtype in ['INT64', 'FLOAT64'] else None
             df[col] = null_value
     
-    # Ensure correct column order
     return df.reindex(columns=schema_cols)
 
+def _clean_subscriptions(df):
+    """Remove redundant formatted date columns"""
+    cols_to_drop = [
+        'created_at_formatted', 'created_at_date',
+        'started_at_formatted', 'started_at_date',
+        'updated_at_formatted', 'updated_at_date'
+    ]
+    return df.drop(columns=[c for c in cols_to_drop if c in df.columns])
+
 def process_json(raw_data):
-    """Main transformation function with robust schema enforcement"""
+    """Main transformation with column cleanup"""
     try:
-        # Flatten JSON structure with explicit hierarchy preservation
         main_records = []
         for entry in raw_data.get('list', []):
-            # Flatten with explicit nested structure preservation
-            sub = flatten(entry.get('subscription', {}), separator='_')
+            # Excluding nested arrays from subscription data
+            sub_data = {k: v for k, v in entry['subscription'].items() 
+                       if k not in ['subscription_items', 'item_tiers']}
+            
+            sub = flatten(sub_data, separator='_')
             cust = flatten(entry.get('customer', {}), separator='_')
             
-            # Combine with explicit prefixes
             combined = {
                 **{'subscription_' + k: v for k, v in sub.items()},
                 **{'customer_' + k: v for k, v in cust.items()}
@@ -72,7 +76,7 @@ def process_json(raw_data):
             print("Warning: No data found after flattening JSON")
             return {table: pd.DataFrame() for table in BQ_SCHEMA.keys()}
 
-        # Split into normalized tables with explicit column handling
+        # Splitting into normalized tables
         entities = {
             'subscriptions': [c for c in main_df if c.startswith('subscription_')],
             'customers': [c for c in main_df 
@@ -86,16 +90,19 @@ def process_json(raw_data):
         for name, cols in entities.items():
             if cols:
                 dfs[name] = main_df[cols].copy()
-                # Remove prefix after splitting
                 dfs[name].columns = [col.split('_', 1)[1] for col in cols]
             else:
                 dfs[name] = pd.DataFrame()
 
-            # Enforce schema and type conversions
+            # Schema enforcement
             dfs[name] = enforce_schema(dfs[name], name)
             for col, dtype in BQ_SCHEMA.get(name, {}).items():
                 if col in dfs[name].columns:
                     dfs[name][col] = convert_column(dfs[name][col], dtype)
+
+        # Cleaning subscriptions table
+        if 'subscriptions' in dfs:
+            dfs['subscriptions'] = _clean_subscriptions(dfs['subscriptions'])
 
         # Handle nested arrays in subscriptions
         def normalize_sub_items(record_path, table_name):
@@ -107,7 +114,6 @@ def process_json(raw_data):
                     meta_prefix='sub_'
                 ).rename(columns={'sub_subscription.id': 'subscription_id'})
                 
-                # Convert all columns to match schema
                 if table_name in BQ_SCHEMA:
                     for col, dtype in BQ_SCHEMA[table_name].items():
                         if col in df.columns:
@@ -120,13 +126,13 @@ def process_json(raw_data):
         dfs['subscription_items'] = normalize_sub_items('subscription_items', 'subscription_items')
         dfs['item_tiers'] = normalize_sub_items('item_tiers', 'item_tiers')
 
-        # Add relationships
+        # Adding relationships
         if 'subscriptions' in dfs and not dfs['subscriptions'].empty:
             dfs['subscriptions']['customer_id'] = main_df.get('customer_id', pd.NA)
         if 'addresses' in dfs and not dfs['addresses'].empty:
             dfs['addresses']['customer_id'] = main_df.get('customer_id', pd.NA)
 
-        # Hash generation with null handling
+        # Hash generation
         for table_name, df in dfs.items():
             if df.empty:
                 df['row_hash'] = pd.NA
