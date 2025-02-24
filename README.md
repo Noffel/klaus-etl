@@ -28,6 +28,7 @@ This document outlines the architecture and implementation details of an ETL pip
 ---
 
 ## **3. Pipeline Stages**
+![Airflow DAG](images/pipeline.png)  
 
 ### **3.1 Extraction**
 - **Input**: `etl.json` files
@@ -57,7 +58,7 @@ This document outlines the architecture and implementation details of an ETL pip
 ---
 
 ## **4. Data Model**
-
+![Data Model](images/erd.png)
 
 ---
 
