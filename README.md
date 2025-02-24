@@ -100,17 +100,12 @@ The project is containerized using Docker for easy setup and deployment. The Doc
 ### **6.3 Configuration**
 - **`etl_config.py`**: Schemas, table metadata
 - **`METADATA_CONFIG`**: Dataset/table mappings
-- **Environment Variables**: GCP credentials, Airflow settings
 
 ---
 
 ## **7. Implementation Highlights**
 
-### **7.1 Optimizations**
-- **Memory Efficiency**: Chunk-based JSON processing
-- **Performance**: Parallel table loading (LOAD_ORDER)
-
-### **7.2 Challenges Solved**
+### **7.1 Challenges Solved**
 - Nested JSON → Relational model conversion
 - Cross-table incremental sync
 - Schema evolution handling
