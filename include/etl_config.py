@@ -1,10 +1,176 @@
 from pathlib import Path
 
+# Base Paths
 BASE_PATH = Path('/opt/airflow/data')
 JSON_PATH = BASE_PATH / 'etl.json'
 
-BQ_CONFIG = {
+# BigQuery Schema Configuration
+BQ_SCHEMA = {
+    'subscriptions': {
+        'id': 'STRING',
+        'billing_period': 'INT64',
+        'billing_period_unit': 'STRING',
+        'customer_id': 'STRING',
+        'status': 'STRING',
+        'current_term_start': 'TIMESTAMP',
+        'current_term_end': 'TIMESTAMP',
+        'next_billing_at': 'TIMESTAMP',
+        'created_at': 'TIMESTAMP',
+        'started_at': 'TIMESTAMP',
+        'activated_at': 'TIMESTAMP',
+        'created_from_ip': 'STRING',
+        'updated_at': 'TIMESTAMP',
+        'has_scheduled_changes': 'INT64',
+        'channel': 'STRING',
+        'resource_version': 'INT64',
+        'deleted': 'INT64',
+        'object': 'STRING',
+        'coupon': 'STRING',
+        'currency_code': 'STRING',
+        'due_invoices_count': 'INT64',
+        'due_since': 'TIMESTAMP',
+        'total_dues': 'FLOAT64',
+        'mrr': 'FLOAT64',
+        'exchange_rate': 'FLOAT64',
+        'base_currency_code': 'STRING',
+        'has_scheduled_advance_invoices': 'INT64',
+        'create_pending_invoices': 'INT64',
+        'auto_close_invoices': 'INT64',
+        'auto_collection': 'INT64',
+        'offline_payment_method': 'STRING',
+        'row_hash': 'INT64'
+    },
+    'subscription_items': {
+        'item_price_id': 'STRING',
+        'item_type': 'STRING',
+        'quantity': 'FLOAT64',
+        'unit_price': 'FLOAT64',
+        'amount': 'FLOAT64',
+        'free_quantity': 'FLOAT64',
+        'object': 'STRING',
+        'metered_quantity': 'FLOAT64',
+        'subscription_id': 'STRING',
+        'row_hash': 'INT64'
+    },
+    'item_tiers': {
+        'item_price_id': 'STRING',
+        'starting_unit': 'FLOAT64',
+        'ending_unit': 'FLOAT64',
+        'price': 'FLOAT64',
+        'object': 'STRING',
+        'subscription_id': 'STRING',
+        'row_hash': 'INT64'
+    },
+    'etl_metadata': {
+        'table_name': 'STRING',
+        'last_processed_ts': 'TIMESTAMP',
+        'processed_at': 'TIMESTAMP',
+        'row_count': 'INT64'
+    },
+    'addresses': {
+        'billing_address_first_name': 'STRING',
+        'billing_address_last_name': 'STRING',
+        'billing_address_email': 'STRING',
+        'billing_address_company': 'STRING',
+        'billing_address_line1': 'STRING',
+        'billing_address_city': 'STRING',
+        'billing_address_country': 'STRING',
+        'billing_address_zip': 'STRING',
+        'billing_address_validation_status': 'STRING',
+        'billing_address_object': 'STRING',
+        'billing_address_state_code': 'STRING',
+        'billing_address_state': 'STRING',
+        'customer_id': 'STRING',
+        'row_hash': 'INT64'
+    },
+    'customers': {
+        'id': 'STRING',
+        'first_name': 'STRING',
+        'last_name': 'STRING',
+        'email': 'STRING',
+        'company': 'STRING',
+        'auto_collection': 'INT64',
+        'offline_payment_method': 'STRING',
+        'net_term_days': 'INT64',
+        'allow_direct_debit': 'INT64',
+        'created_at': 'TIMESTAMP',
+        'created_from_ip': 'STRING',
+        'taxability': 'STRING',
+        'updated_at': 'TIMESTAMP',
+        'pii_cleared': 'STRING',
+        'channel': 'STRING',
+        'resource_version': 'INT64',
+        'deleted': 'INT64',
+        'object': 'STRING',
+        'card_status': 'STRING',
+        'promotional_credits': 'INT64',
+        'refundable_credits': 'INT64',
+        'excess_payments': 'INT64',
+        'unbilled_charges': 'INT64',
+        'preferred_currency_code': 'STRING',
+        'mrr': 'INT64',
+        'tax_providers_fields': 'STRING',
+        'auto_close_invoices': 'INT64',
+        'cf_payment_id': 'STRING',
+        'row_hash': 'INT64'
+    },
+    'customers_staging': {
+        'id': 'STRING',
+        'first_name': 'STRING',
+        'last_name': 'STRING',
+        'email': 'STRING',
+        'company': 'STRING',
+        'auto_collection': 'INT64',
+        'offline_payment_method': 'STRING',
+        'net_term_days': 'INT64',
+        'allow_direct_debit': 'INT64',
+        'created_at': 'TIMESTAMP',
+        'created_from_ip': 'STRING',
+        'taxability': 'STRING',
+        'updated_at': 'TIMESTAMP',
+        'pii_cleared': 'STRING',
+        'channel': 'STRING',
+        'resource_version': 'INT64',
+        'deleted': 'INT64',
+        'object': 'STRING',
+        'card_status': 'STRING',
+        'promotional_credits': 'INT64',
+        'refundable_credits': 'INT64',
+        'excess_payments': 'INT64',
+        'unbilled_charges': 'INT64',
+        'preferred_currency_code': 'STRING',
+        'mrr': 'INT64',
+        'tax_providers_fields': 'STRING',
+        'auto_close_invoices': 'INT64',
+        'cf_payment_id': 'STRING',
+        'row_hash': 'INT64'
+    }
+}
+
+METADATA_CONFIG = {
+    'project_id': 'klaus-data-model',
     'dataset_id': 'klaus_subscriptions',
-    'autodetect': True,
-    'write_disposition': 'WRITE_TRUNCATE'
+    'metadata_table': 'etl_metadata',
+    'tables': {
+        'subscriptions': {
+            'incremental_key': 'updated_at',
+            'pk': ['id'],
+            'hash_columns': ['status', 'current_term_end', 'mrr']
+        },
+        'customers': {
+            'incremental_key': 'updated_at',
+            'pk': ['id'],
+            'hash_columns': ['email', 'company']
+        },
+        'addresses': {
+            'pk': ['customer_id'],
+            'hash_columns': ['billing_address_line1', 'billing_address_zip']
+        },
+        'subscription_items': {
+            'pk': ['subscription_id', 'item_price_id']
+        },
+        'item_tiers': {
+            'pk': ['subscription_id', 'item_price_id', 'starting_unit']
+        }
+    }
 }
